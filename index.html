@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDV Profissional</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+      /* Trava o fundo para não ter rolagem externa */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #f3f4f6;
+        font-family: Inter, system-ui;
+      }
+
+      /* Centraliza o app e garante que ele não ultrapasse a tela */
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    
+      /* O container principal agora é FIXO e FLEXÍVEL */
+     .app-container {
+     /* dvh = Dynamic Viewport Height (Altura Dinâmica) */
+     /* Isso subtrai automaticamente o espaço das barras do navegador */
+     height: 92dvh; 
+     width: 95%;
+     max-width: 400px;
+     display: flex;
+     flex-direction: column;
+     overflow: hidden;
+  /* Margem extra no fundo para garantir que o botão respire */
+     margin-bottom: env(safe-area-inset-bottom);
+   }
+
+      /* Essa classe vai em todas as suas listas (PDV, Catálogo, Histórico) */
+      .scroll-fixo {
+        flex-grow: 1; /* Faz essa parte ocupar todo o espaço sobrando no meio */
+        overflow-y: auto; /* Permite rolar apenas aqui dentro */
+        padding-right: 4px;
+      }
+
+      .scroll-fixo::-webkit-scrollbar {
+        width: 4px;
+      }
+      .scroll-fixo::-webkit-scrollbar-thumb {
+        background: #2563eb;
+        border-radius: 10px;
+      }
+      /* Customização do Scroll para Chrome, Edge e Safari */
+.custom-scroll::-webkit-scrollbar {
+  width: 8px; /* Largura da barra */
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9; /* Cor do fundo da trilha (cinza claro) */
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  /* Gradiente para combinar com seu layout */
+  background: linear-gradient(to bottom, #3b82f6, #1e40af);
+  border-radius: 10px;
+  border: 2px solid #f1f5f9; /* Cria uma margem em volta da barra */
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #1e40af; /* Escurece ao passar o mouse */
+}
+
+/* Para Firefox */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #f1f5f9;
+}
+    </style>
+  </head>
+
+  <body class="min-h-screen flex items-center justify-center p-6">
+    <div class="bg-white rounded-2xl shadow-2xl p-4 app-container">
+    <!-- TABS -->
+    <div class="flex justify-between border-b mb-4 text-sm font-semibold">
+      <button
+        id="tab-pdv"
+        class="flex-1 py-2 border-b-2 border-blue-600 text-blue-600"
+      >
+        PDV
+      </button>
+      <button id="tab-gerente" class="flex-1 py-2">Gerenciar</button>
+      <button id="tab-historico" class="flex-1 py-2">Histórico</button>
+      <button id="tab-config" class="flex-1 py-2">Ajustes</button>
+    </div>
+
+    <!-- ================= PDV ================= -->
+    <div id="section-pdv" class="flex flex-col h-full overflow-hidden">
+  
+  <div class="flex-none pt-2">
+    <h1 class="text-center font-black text-2xl mb-4">
+      <span class="block text-gray-400 text-[10px] uppercase tracking-[0.3em] mb-1">Sistema de Vendas</span>
+      <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">COMÉRCIO</span>
+      <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-600">VIA PIX</span>
+    </h1>
+
+    <div class="flex gap-2 mb-3">
+      <input id="product-code" class="flex-1 border rounded-lg p-2" placeholder="Código" />
+      <input id="quantity" type="number" min="1" value="1" class="w-20 border rounded-lg p-2 text-center" />
+    </div>
+    
+    <button id="add-item-btn" class="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 flex items-center justify-center mb-4">
+      <span class="mr-2">🛒</span> Adicionar Item
+    </button>
+  </div>
+
+  <div class="flex-1 overflow-y-auto custom-scroll bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+    <h2 class="text-sm font-bold text-gray-400 mb-2 font-mono uppercase tracking-wider">
+      Produtos ou Serviços
+    </h2>
+    <div id="item-list" class="flex flex-col gap-2">
+       </div>
+  </div>
+
+  <div class="flex-none border-t pt-3">
+    <div class="flex justify-between items-center mb-3">
+      <span class="font-bold text-gray-600">TOTAL</span>
+      <span id="total-price" class="text-2xl font-black text-blue-600">R$ 0.00</span>
+    </div>
+
+    <select id="payment-method" class="w-full border rounded-lg p-2 mb-2 bg-white">
+      <option>PIX</option>
+      <option>Dinheiro</option>
+    </select>
+
+    <div id="cash-payment-container" class="hidden mb-2">
+      <input id="amount-paid-input" type="number" step="0.01" placeholder="Valor recebido" class="w-full border rounded-lg p-2" />
+      <div id="change-display" class="hidden mt-2 font-bold text-green-600"></div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2">
+      <button id="finalize-btn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-md active:scale-95">
+        Finalizar Venda
+      </button>
+
+      <button id="cancel-btn" class="w-full border border-red-200 text-red-500 py-2 rounded-lg font-bold text-sm">
+        Cancelar Venda
+      </button>
+    </div>
+  </div>
+</div>
+    <!-- ================= GERENCIAR ================= -->
+    <div id="section-gerente" class="tab-content hidden">
+      <div class="bg-gray-50 p-4 rounded-lg mb-4">
+        <h3 class="text-lg font-semibold mb-2">
+          Cadastrar Novo Item ou Serviço
+        </h3>
+        <div class="flex flex-col gap-2">
+          <input
+            id="prod-code-input"
+            type="text"
+            placeholder="Código ou Referência"
+            class="p-2 border rounded-lg"
+          />
+          <input
+            id="prod-name-input"
+            type="text"
+            placeholder="Nome / Descrição do Serviço"
+            class="p-2 border rounded-lg"
+          />
+          <input
+            id="prod-price-input"
+            type="number"
+            step="0.01"
+            placeholder="Valor (R$)"
+            class="p-2 border rounded-lg"
+          />
+          <button
+            id="save-prod-btn"
+            class="bg-blue-600 text-white py-2 rounded-lg font-bold"
+          >
+            Salvar no Catálogo
+          </button>
+        </div>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Itens e Serviços Ativos</h3>
+      <div
+        class="bg-gray-50 p-4 rounded-lg max-h-80 overflow-y-auto border border-gray-200 custom-scroll"
+      >
+        <table id="products-table" class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-100 sticky top-0">
+            <tr>
+              <th
+                class="py-2 px-1 text-xs font-bold text-left text-gray-500 uppercase"
+              >
+                Ref.
+              </th>
+              <th
+                class="py-2 px-1 text-xs font-bold text-left text-gray-500 uppercase"
+              >
+                Descrição
+              </th>
+              <th
+                class="py-2 px-1 text-xs font-bold text-left text-gray-500 uppercase"
+              >
+                Preço
+              </th>
+              <th
+                class="py-2 px-1 text-xs font-bold text-left text-gray-500 uppercase"
+              >
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- ================= HISTÓRICO ================= -->
+    <div id="section-historico" class="tab-content hidden">
+      <h1 class="text-2xl font-bold text-gray-800 text-center mb-4">
+        Histórico
+      </h1>
+
+      <div class="flex justify-start mb-4">
+        <button
+          onclick="clearFullHistory()"
+          class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-800 transition shadow-sm"
+        >
+          Limpar Tudo
+        </button>
+      </div>
+
+      <div
+        class="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm"
+      >
+        <div class="h-[300px] overflow-y-auto overflow-x-auto custom-scroll">
+          <table id="history-table" class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100 sticky top-0 z-10 shadow-sm">
+              <tr>
+                <th
+                  class="py-3 px-3 text-[10px] font-bold text-left text-gray-500 uppercase tracking-wider"
+                >
+                  ID
+                </th>
+                <th
+                  class="py-3 px-3 text-[10px] font-bold text-left text-gray-500 uppercase tracking-wider"
+                >
+                  Data
+                </th>
+                <th
+                  class="py-3 px-3 text-[10px] font-bold text-left text-gray-500 uppercase tracking-wider"
+                >
+                  Total
+                </th>
+                <th
+                  class="py-3 px-3 text-[10px] font-bold text-center text-gray-500 uppercase tracking-wider"
+                >
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id="history-table-body"
+              class="divide-y divide-gray-200 bg-white"
+            ></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+             <!--Seção de configiração-->
+    <div id="section-config" class="tab-content hidden flex flex-col h-full overflow-hidden">
+     <div class="flex-1 overflow-y-auto custom-scroll p-2">
+      <div class="bg-blue-50 p-4 rounded-xl mb-4 border border-blue-100">
+      <h3 class="text-lg font-bold text-blue-800 mb-1">Dados do Negócio</h3>
+      <p class="text-[10px] text-blue-600 mb-4 uppercase font-bold">Configurações para PIX e Notas</p>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-black uppercase text-gray-400">Nome da Empresa</label>
+          <input id="cfg-name" type="text" class="w-full p-3 border rounded-xl shadow-sm" placeholder="Ex: Tecno Loja">
+        </div>
+        <div>
+          <label class="text-[10px] font-black uppercase text-gray-400">Chave PIX (Celular, CPF ou Aleatória)</label>
+          <input id="cfg-key" type="text" class="w-full p-3 border rounded-xl shadow-sm" placeholder="Sua chave aqui">
+        </div>
+        <div>
+          <label class="text-[10px] font-black uppercase text-gray-400">Cidade</label>
+          <input id="cfg-city" type="text" class="w-full p-3 border rounded-xl shadow-sm" placeholder="Ex: Rio de Janeiro">
+        </div>
+        <button id="save-config-btn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all">
+          SALVAR CONFIGURAÇÕES
+        </button>
+      </div>
+    </div>
+  </div>
+</div>         
+    <!-- Mensagens de Alerta (substituindo o alert()) -->
+    <div
+      id="message-box"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50"
+    >
+      <div class="bg-white p-6 rounded-lg shadow-2xl text-center">
+        <p id="message-text" class="text-lg mb-4 text-gray-800"></p>
+        <div id="message-buttons" class="flex justify-center gap-4">
+          <button
+            id="message-ok-btn"
+            class="bg-blue-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Nota Fiscal/Recibo -->
+    <div
+      id="invoice-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50"
+    >
+      <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-sm">
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">
+          Nota Fiscal
+        </h2>
+        <div
+          id="invoice-content"
+          class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 whitespace-pre-wrap font-mono text-sm max-h-72 overflow-y-auto"
+        >
+          <!-- Conte\u00FAdo da nota fiscal gerado aqui -->
+        </div>
+        <button
+          id="download-invoice-btn"
+          class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-200 mb-2"
+        >
+          Download Recibo
+        </button>
+        <button
+          id="send-whatsapp-btn"
+          class="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-200 mb-2 flex items-center justify-center"
+        >
+          <span class="mr-2">📱</span> Enviar via WhatsApp
+        </button>
+        <button
+          id="close-invoice-modal-btn"
+          class="w-full bg-gray-400 text-white font-bold py-3 rounded-lg hover:bg-gray-500 transition duration-200"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal para o QR Code PIX -->
+    <div
+      id="pix-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-sm text-center"
+      >
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Pagamento PIX</h2>
+        <p class="text-gray-600 mb-4 font-semibold text-red-600">
+          Aponte a câmera do banco.
+        </p>
+
+        <div
+          id="qrcode-container"
+          class="flex justify-center p-2 mb-4 bg-white border-4 border-blue-500 rounded-lg"
+        ></div>
+
+        <div class="text-3xl font-black text-blue-600 mb-6">
+          <span id="pix-amount">R$ 0,00</span>
+        </div>
+
+        <button
+          id="close-pix-modal-btn"
+          class="w-full bg-green-600 text-white font-bold py-4 rounded-lg hover:bg-green-700 transition duration-200"
+        >
+          VOLTAR
+        </button>
+      </div>
+    </div>
+    <!-- ================= PRESERVADO ================= -->
+<script src="js/storage.js"></script>
+<script src="js/pdv.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
